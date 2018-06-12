@@ -58,21 +58,23 @@ data.ix[data['APINO']=='705008']
 # Now we need to add 30-60-90-180 and 365 day production 
 # Let's just look into the oil for now!
 
-df = data[['APINO', 'Date', 'Oil', 'cum_oil', 'cum_days']].head(100)
+df = data[['APINO', 'Date', 'Oil', 'cum_oil', 'cum_days']]
 df['Interpol_OIL'] = 0.0 #create a new column with 0 value
-df
+type(df)
+
+df = df.reset_index()
 
 time = [30,60,90,180,365]
 # will do the calculations for all 5 time periods, but all have same name as 'Interpol_OIL' - Need a method to change the dataframe name inside the loop
 for time in time:
     for count in range(len(df['cum_oil'])):
-        if (df['cum_days'][count] <= time and df['cum_days'][count+1] > time):
-            df['Interpol_OIL'][count] = df['cum_oil'][count-1] + ((df['cum_oil'][count+1]) - df['cum_oil'][count-1])*(time - df['cum_days'][count-1])/(df['cum_days'][count+1]-df['cum_days'][count-1])   
+        if (df['cum_days'][count] <= 365 and df['cum_days'][count+1] > 365):
+            df['Interpol_OIL'][count] = df['cum_oil'][count-1] + ((df['cum_oil'][count+1]) - df['cum_oil'][count-1])*(365 - df['cum_days'][count-1])/(df['cum_days'][count+1]-df['cum_days'][count-1])   
     
     pd.to_numeric(df['Interpol_OIL'], errors='coerce')
     df['Interpol_OIL'] = df['Interpol_OIL'].apply(lambda x: '%.1f' % x).values.tolist()
-    df[df['Interpol_OIL'] != '0.0']
 
+df[df['Interpol_OIL'] != '0.0']
 
 # remove columns where days = 0
 #columns = ['Days']
