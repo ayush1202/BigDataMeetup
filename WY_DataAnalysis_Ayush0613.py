@@ -43,7 +43,9 @@ data.describe() # get basic statistics for the dataset, does not include any str
 data.APINO.nunique() # This gives us 27,742 well records
 
 
-data_FF = pd.read_sql_query(''' SELECT APINumber AS APINO, TotalBaseWaterVolume, CountyName, CountyNumber  FROM FracFocusRegistry WHERE (Statenumber = 49 AND (CountyName = 'Campbell' OR CountyName = 'Converse'));''', conn2)
+data_FF = pd.read_sql_query(''' SELECT APINumber AS APINO, TotalBaseWaterVolume, CountyName, CountyNumber  
+                            FROM FracFocusRegistry 
+                            WHERE (Statenumber = 49 AND (CountyName = 'Campbell' OR CountyName = 'Converse'));''', conn2)
 print (data_FF.head(10)) #default head() function prints 5 results
 print (data_FF.shape) # in the form of rows x columns
 data_FF.columns
@@ -94,10 +96,10 @@ data
 # Now we need to add 30-60-90-180 and 365 day production 
 # Let's just look into the oil for now!
 
-#df = data[['APINO', 'Date', 'Oil', 'cum_oil', 'cum_days']].astype(int)
 data.columns
-df = data[['APINO', 'Oil', 'cum_oil', 'Days', 'cum_days']].astype(float) #Removed the 'Date' column,  need to have a separate dataframe with datetime like values
+#Removed the 'Date' column,  need to have a separate dataframe with datetime like values, if required
 
+df = data[['APINO', 'Oil', 'cum_oil', 'Days', 'cum_days']].astype(float) 
 df = df.reset_index()
 df.index
 df = df.sort_values(['index'])
@@ -116,7 +118,8 @@ for count in range(len(df['cum_oil'])):
             df['60_Interpol_OIL'][count] = df['cum_oil'][count-1] + ((df['cum_oil'][count+1]) - df['cum_oil'][count-1])*(time - df['cum_days'][count-1])/(df['cum_days'][count+1]-df['cum_days'][count-1])  
 pd.to_numeric(df['60_Interpol_OIL'], errors='coerce')
 df['60_Interpol_OIL'] = df['60_Interpol_OIL'].apply(lambda x: '%.1f' % x).values.tolist()
-df[df['60_Interpol_OIL'] != '0.0']
+df['60_Interpol_OIL'].astype(float)
+df[df['60_Interpol_OIL'] != 0.0]
 
 time = 180
 df['180_Interpol_OIL'] = 0.0
@@ -127,7 +130,8 @@ for count in range(len(df['cum_oil'])):
             df['180_Interpol_OIL'][count] = df['cum_oil'][count-1] + ((df['cum_oil'][count+1]) - df['cum_oil'][count-1])*(time - df['cum_days'][count-1])/(df['cum_days'][count+1]-df['cum_days'][count-1])   
 pd.to_numeric(df['180_Interpol_OIL'], errors='coerce')
 df['180_Interpol_OIL'] = df['180_Interpol_OIL'].apply(lambda x: '%.1f' % x).values.tolist()
-df[df['180_Interpol_OIL'] != '0.0']
+df['180_Interpol_OIL'].astype(float)
+df[df['180_Interpol_OIL'] != 0.0]
 
 time = 365
 df['365_Interpol_OIL'] = 0.0
@@ -138,7 +142,8 @@ for count in range(len(df['cum_oil'])):
             df['365_Interpol_OIL'][count] = df['cum_oil'][count-1] + ((df['cum_oil'][count+1]) - df['cum_oil'][count-1])*(time - df['cum_days'][count-1])/(df['cum_days'][count+1]-df['cum_days'][count-1])   
 pd.to_numeric(df['365_Interpol_OIL'], errors='coerce')
 df['365_Interpol_OIL'] = df['365_Interpol_OIL'].apply(lambda x: '%.1f' % x).values.tolist()
-df[df['365_Interpol_OIL'] != '0.0']
+df['365_Interpol_OIL'].astype(float)
+df[df['365_Interpol_OIL'] != 0.0]
 
 #-------------------------------------------------------------
   
@@ -148,7 +153,7 @@ df.rename(columns={'60_Interpol_OIL': '60_day_cum_oil', '180_Interpol_OIL': '180
 # import statsmodels and run basic analysis on 30,60,90, 180 and 365 data
 
 import statsmodels.formula.api as smf
-# from sklearn.linear_model import LinearRegression 
+from sklearn.linear_model import LinearRegression 
 # scikitLearn is a Machine Learning Library in Python
 
 # extracting only the relevant columns required for this point onwards
@@ -178,21 +183,21 @@ from scipy import stats
 # 3. Linearity - Good idea to check in case any data transformation is required
 # 4. Absence of correlated errors
 
-## sns.distplot(data_stats['60_day_cum_oil'],fit = norm, hist=True, kde=True, bins=300, color = 'blue', hist_kws={'edgecolor':'black'},kde_kws={'linewidth': 4})
-## Histogram (for kurtosis and skewness) and Normal Probability Plot (data distribution should follow the diagonal)
-## Getting the value of Kurtosis and Skewness
-#print("Skewness: %f" % data_stats['365_day_cum_oil'].skew())
-#print("Kurtosis: %f" % data_stats['365_day_cum_oil'].kurt())
-#
-#fig = plt.figure()
-#res = stats.probplot(data_stats['365_day_cum_oil'], plot=plt)
-## Adding the labels
-#plt.title('Density Plot and Histogram of Annual Production')
-#plt.xlabel('Time')
-#plt.ylabel('Annual Production Frequency')
+sns.distplot(data_stats['60_day_cum_oil'],fit = norm, hist=True, kde=True, bins=300, color = 'blue', hist_kws={'edgecolor':'black'},kde_kws={'linewidth': 4})
+# Histogram (for kurtosis and skewness) and Normal Probability Plot (data distribution should follow the diagonal)
+# Getting the value of Kurtosis and Skewness
+print("Skewness: %f" % data_stats['365_day_cum_oil'].skew())
+print("Kurtosis: %f" % data_stats['365_day_cum_oil'].kurt())
+
+fig = plt.figure()
+res = stats.probplot(data_stats['365_day_cum_oil'], plot=plt)
+# Adding the labels
+plt.title('Density Plot and Histogram of Annual Production')
+plt.xlabel('Time')
+plt.ylabel('Annual Production Frequency')
 
 # Pairtplot - Useful for exploring correlations between multidimensional data
-sns.pairplot(data_stats, size=5);
+# sns.pairplot(data_stats, size=3);
 
 # Correlation Matrix and Heatmap
 corr_matrix = data_stats.corr()
