@@ -204,6 +204,11 @@ corr_matrix = data_stats.corr()
 f, ax = plt.subplots(figsize = (6, 6))
 sns.heatmap(corr_matrix, vmax=0.8, square=True)
 
+
+cm = sns.light_palette("green", as_cmap=True)
+s = corr_matrix.style.background_gradient(cmap=cm)
+s
+
 # Jointplot - Useful for joint distribution between different datasets
 #sns.jointplot("30_day_cum_oil", "365_day_cum_oil", data=data_stats, kind='reg');
 sns.jointplot("60_day_cum_oil", "365_day_cum_oil", data=data_stats, kind='reg');
