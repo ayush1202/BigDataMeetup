@@ -62,7 +62,7 @@ data['APINO']
 # Merge the two dataframes based on same API
 data = pd.merge(data,data_FF,on = 'APINO')
 
-# Number of unique API - After merging the two databases on API
+# Number of unique API - After merging the two databases on API, Need to know since we lose some wells after merging tables
 data.APINO.nunique() # This gives us 233 well records
 
 ## Date Manipulation - Convert the date column from string to datetime format
@@ -73,13 +73,17 @@ data.APINO.nunique() # This gives us 233 well records
 
 # Checking if there is any NULL value in the dataset
 data.isnull().sum() 
-data.dropna(axis=0, how='any') # entire row with even a single NA value will be removed - Better option to filter data
+data = data.dropna(axis=0, how='any') # entire row with even a single NA value will be removed - Better option to filter data
 
-# At this point we have 458,703 rows and 12 columns
+data.shape
+# At this point we have 494796 rows and 12 columns
 
 # Column for Cumulative value, Groupby function can be understood as (Split, Apply Function and Combine)
 # Also converting the numbers to float 
 data['cum_oil'] = data.groupby(['APINO'])['Oil'].apply(lambda x: x.cumsum()).astype(float)
+# Another method for calculating cumulative sum based on a group
+#data['cum_oil2'] = data.groupby('APINO')['Oil'].transform(pd.Series.cumsum)
+
 data['cum_gas'] = data.groupby(['APINO'])['Gas'].apply(lambda x: x.cumsum()).astype(float)
 data['cum_water'] = data.groupby(['APINO'])['Water'].apply(lambda x: x.cumsum()).astype(float)
 data['cum_days'] = data.groupby(['APINO'])['Days'].apply(lambda x: x.cumsum()).astype(float)
@@ -91,12 +95,13 @@ data
 # Let's just look into the oil for now!
 
 #df = data[['APINO', 'Date', 'Oil', 'cum_oil', 'cum_days']].astype(int)
+data.columns
 df = data[['APINO', 'Oil', 'cum_oil', 'Days', 'cum_days']].astype(float) #Removed the 'Date' column,  need to have a separate dataframe with datetime like values
-
 
 df = df.reset_index()
 df.index
 df = df.sort_values(['index'])
+
 df.to_csv(os.path.join(path,r'Data_Reduced.csv'))
 
 # -----------------------------------------------------------
@@ -108,7 +113,7 @@ df['60_Interpol_OIL'].astype(str).astype(float)
 for count in range(len(df['cum_oil'])):
     if count>=1:
         if (df['cum_days'][count] <= time and df['cum_days'][count+1] > time):
-            df['60_Interpol_OIL'][count] = df['cum_oil'][count-1] + ((df['cum_oil'][count+1]) - df['cum_oil'][count-1])*(time - df['cum_days'][count-1])/(df['cum_days'][count+1]-df['cum_days'][count-1])   
+            df['60_Interpol_OIL'][count] = df['cum_oil'][count-1] + ((df['cum_oil'][count+1]) - df['cum_oil'][count-1])*(time - df['cum_days'][count-1])/(df['cum_days'][count+1]-df['cum_days'][count-1])  
 pd.to_numeric(df['60_Interpol_OIL'], errors='coerce')
 df['60_Interpol_OIL'] = df['60_Interpol_OIL'].apply(lambda x: '%.1f' % x).values.tolist()
 df[df['60_Interpol_OIL'] != '0.0']
