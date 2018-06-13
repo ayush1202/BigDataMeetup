@@ -183,7 +183,7 @@ from scipy import stats
 # 3. Linearity - Good idea to check in case any data transformation is required
 # 4. Absence of correlated errors
 
-sns.distplot(data_stats['60_day_cum_oil'],fit = norm, hist=True, kde=True, bins=300, color = 'blue', hist_kws={'edgecolor':'black'},kde_kws={'linewidth': 4})
+sns.distplot(data_stats['60_day_cum_oil'], hist=True, kde=True, bins=300, color = 'blue', hist_kws={'edgecolor':'black'},kde_kws={'linewidth': 4})
 # Histogram (for kurtosis and skewness) and Normal Probability Plot (data distribution should follow the diagonal)
 # Getting the value of Kurtosis and Skewness
 print("Skewness: %f" % data_stats['365_day_cum_oil'].skew())
@@ -202,18 +202,14 @@ plt.ylabel('Annual Production Frequency')
 # Correlation Matrix and Heatmap
 corr_matrix = data_stats.corr()
 f, ax = plt.subplots(figsize = (6, 6))
-sns.heatmap(corr_matrix, vmax=0.8, square=True)
-
-
 cm = sns.light_palette("green", as_cmap=True)
-s = corr_matrix.style.background_gradient(cmap=cm)
-s
+s = sns.heatmap(corr_matrix, vmax=0.8, square=True, annot=True, fmt=".2f", cmap = cm)
 
 # Jointplot - Useful for joint distribution between different datasets
 #sns.jointplot("30_day_cum_oil", "365_day_cum_oil", data=data_stats, kind='reg');
 sns.jointplot("60_day_cum_oil", "365_day_cum_oil", data=data_stats, kind='reg');
 #sns.jointplot("90_day_cum_oil", "365_day_cum_oil", data_stats, kind='reg');
-sns.jointplot("180_day_cum_oil", "365_day_cum_oil", data_stats, kind='reg');
+sns.jointplot("180_day_cum_oil", "365_day_cum_oil", data=data_stats, kind='reg');
 
 # Convert the three dataframes we created to .csv file for tableau
 data.to_csv(os.path.join(path,r'Data_Final.csv'))
