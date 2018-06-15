@@ -97,11 +97,11 @@ data
 
 data.columns # the list of columns in the dataframe
 # Only looking at oil production for analysis
-df = data[['APINO', 'cum_oil', 'cum_days']].astype(float) # New Dataframe with selected columns 
+df = data[['APINO', 'cum_oil', 'cum_gas', 'cum_water', 'cum_days']].astype(float) # New Dataframe with selected columns 
 df = df.reset_index()
 df.index
 df = df.sort_values(['index'])
-df.to_csv(os.path.join(path,r'Data_Reduced.csv')) # Converting the file to csv
+df.to_csv(os.path.join(path,r'Cumulative_Production.csv')) # Converting the file to csv
 
 # There are certain wells which are producing from 60's so they have more than 40 years of production
 # If required to filter those wells out, the following code chunk will help
@@ -113,7 +113,7 @@ df.to_csv(os.path.join(path,r'Data_Reduced.csv')) # Converting the file to csv
 #data = data[(data['Date'] > '2005-01-01')] 
 
 # ----------------------------------------------------------------------
-df = pd.read_csv(path+r'\Data_Reduced.csv')
+df = pd.read_csv(path+r'\Cumulative_Production.csv')
 df
 
 df['60_Interpol_OIL'] = 0
@@ -154,7 +154,7 @@ df = df.groupby(['APINO'])["60_Interpol_OIL", "180_Interpol_OIL", "365_Interpol_
 df
 
 
-#-------------Brief Statistical Analysis and Visualization------------------------------------------------
+#-------------Brief Statistical Analysis and Visualization - Oil Production------------------------------------------------
 
 df.rename(columns={'60_Interpol_OIL': '60_day_cum_oil', '180_Interpol_OIL': '180_day_cum_oil', '365_Interpol_OIL': '365_day_cum_oil' }, inplace=True)
 df.columns
@@ -168,10 +168,16 @@ df.set_index('APINO')
 import statsmodels.formula.api as smf
 
 # Scatter Plot
+
 X1 = df['60_day_cum_oil']
 X2 = df['180_day_cum_oil']
 Y = df['365_day_cum_oil']
-plt.scatter(X1, Y)
+plt.subplot(211)
+plt.scatter(X1, Y, marker='*', cmap='Dark2', color='r')
+plt.title('Scatter Plot')
+plt.subplot(212)
+plt.scatter(X2, Y, marker='.', cmap='Dark2',color='g')
+
 
 # Basic Statistical Analysis Using Statsmodels
 model1 = smf.ols(formula = 'Y ~ X1', data=df).fit()
@@ -185,37 +191,38 @@ print (model2.params)
 from scipy import stats
 from scipy.stats import norm
 # Histograms and Density plots for all the columns calculated 
-# Checking for the following statistical parameters
+# Check for the following statistical parameters
 # 1. Normality - checking for the normal distribution
 # 2. Homoscedasticity - assumption that dependent variables exhibit equal levels of variance across the range of predictor variables
 # 3. Linearity - Good idea to check in case any data transformation is required
 # 4. Absence of correlated errors
 
+# Distplot - Visualizing the distribution of a dataset
+# Histogram with KDE (Kernel Density Estimation is a non-parametric way to estimate the probability density function of a random variable)
 sns.set()
-sns.distplot(df['60_day_cum_oil'], hist=True, kde=True, bins=50, color = 'blue', hist_kws={'edgecolor':'black'},kde_kws={'linewidth': 4})
-sns.distplot(df['180_day_cum_oil'], hist=True, kde=True, bins=50, color = 'red', hist_kws={'edgecolor':'black'},kde_kws={'linewidth': 4})
-sns.distplot(df['365_day_cum_oil'], hist=True, kde=True, bins=50, color = 'green', hist_kws={'edgecolor':'black'},kde_kws={'linewidth': 4})
-sns.plt.legend()
+sns.distplot(df['60_day_cum_oil'], axlabel=False, hist=True, kde=True, bins=50, color = 'blue',label ='60 Day Cumulative', hist_kws={'edgecolor':'black'},kde_kws={'linewidth': 4})
+sns.distplot(df['180_day_cum_oil'], axlabel=False, hist=True, kde=True, bins=50, color = 'red',label ='180 Day Cumulative', hist_kws={'edgecolor':'black'},kde_kws={'linewidth': 4})
+sns.distplot(df['365_day_cum_oil'], axlabel=False, hist=True, kde=True, bins=50, color = 'green',label ='365 Day Cumulative', hist_kws={'edgecolor':'black'},kde_kws={'linewidth': 4}).set_title('Distribution Comparison')
+plt.legend()
+plt.show()
 
 #skewness and kurtosis
 print("Skewness: %f" % df['365_day_cum_oil'].skew())
 print("Kurtosis: %f" % df['365_day_cum_oil'].kurt())
 
+
+#Probability Plot - Quantiles - To get an idea about normality and see where the samples deviate from normality
 sns.distplot(df['365_day_cum_oil'], fit = norm)
 fig = plt.figure()
 res = stats.probplot(df['365_day_cum_oil'], plot=plt)
 # Adding the labels
-plt.title('Density Plot and Histogram of Annual Production')
 
 # applying log transformation, in case of positive skewness, log transformations usually works well
-df['365_day_cum_oil_tr'] = np.log(df['365_day_cum_oil'])
-
-sns.distplot(df['365_day_cum_oil_tr'], fit = norm)
-fig = plt.figure()
-res = stats.probplot(df['365_day_cum_oil_tr'], plot=plt)
+#df['365_day_cum_oil_trans'] = np.log(df['365_day_cum_oil'])
 
 # Pairtplot - Useful for exploring correlations between multidimensional data
-sns.pairplot(df, size=3)
+sns.set(style="ticks", color_codes=True)
+sns.pairplot(df, size=3, palette="husl", vars=["60_day_cum_oil", "180_day_cum_oil", "365_day_cum_oil"], kind="reg", markers="+")
 
 # Correlation Matrix and Heatmap
 corr_matrix = df.corr()
@@ -224,11 +231,11 @@ cm = sns.light_palette("green", as_cmap=True)
 s = sns.heatmap(corr_matrix, vmax=0.8, square=True, annot=True, fmt=".2f", cmap = cm)
 
 # Jointplot - Useful for joint distribution between different datasets
-sns.jointplot(X1, Y, data=df, kind='reg');
-sns.jointplot(X2, Y, data=df, kind='reg');
+sns.jointplot(X1, Y, data=df, kind='reg')
+sns.jointplot(X2, Y, data=df, kind='reg')
 
 # Convert the three dataframes we created to .csv file for tableau
-data.to_csv(os.path.join(path,r'Data_Final.csv'))
+df.to_csv(os.path.join(path,r'Data_Final.csv'))
 
 cur2.close()
 conn2.close()
