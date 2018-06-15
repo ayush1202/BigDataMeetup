@@ -128,6 +128,7 @@ for count in range(len(df['APINO'])-1):
 pd.to_numeric(df['60_Interpol_OIL'], errors='coerce')
 df['60_Interpol_OIL'] = df['60_Interpol_OIL'].apply(lambda x: '%.1f' % x).values.tolist()
 df[df['60_Interpol_OIL'] != '0.0']
+df['60_Interpol_OIL'].astype(float)
 
 for count in range(len(df['APINO'])-1):
     if (df['cum_days'][count] < 180 and df['cum_days'][count+1] > 180):
@@ -137,6 +138,7 @@ for count in range(len(df['APINO'])-1):
 pd.to_numeric(df['180_Interpol_OIL'], errors='coerce')
 df['180_Interpol_OIL'] = df['180_Interpol_OIL'].apply(lambda x: '%.1f' % x).values.tolist()
 df[df['180_Interpol_OIL'] != '0.0']
+df['180_Interpol_OIL'].astype(float)
 
 for count in range(len(df['APINO'])-1):
     if (df['cum_days'][count] < 365 and df['cum_days'][count+1] > 365):
@@ -146,50 +148,42 @@ for count in range(len(df['APINO'])-1):
 pd.to_numeric(df['365_Interpol_OIL'], errors='coerce')
 df['365_Interpol_OIL'] = df['365_Interpol_OIL'].apply(lambda x: '%.1f' % x).values.tolist()
 df[df['365_Interpol_OIL'] != '0.0']
-
-
-df['60_Interpol_OIL'].astype(float)
-df['180_Interpol_OIL'].astype(float)
 df['365_Interpol_OIL'].astype(float)
 
-df = df.groupby(['APINO'])["60_Interpol_OIL", "180_Interpol_OIL", "365_Interpol_OIL"].apply(lambda x : x.astype(float).sum())
+df = df.groupby(['APINO'])["60_Interpol_OIL", "180_Interpol_OIL", "365_Interpol_OIL"].apply(lambda x : x.astype(float).sum()).reset_index()
 df
 
 
 #-------------Brief Statistical Analysis and Visualization------------------------------------------------
 
 df.rename(columns={'60_Interpol_OIL': '60_day_cum_oil', '180_Interpol_OIL': '180_day_cum_oil', '365_Interpol_OIL': '365_day_cum_oil' }, inplace=True)
+df.columns
 
 # import statsmodels and run basic analysis on 60,180 and 365 data
 
+# Descriptive Statistics
+df.describe()
+
+df.set_index('APINO')
 import statsmodels.formula.api as smf
-#from sklearn.linear_model import LinearRegression 
-# scikitLearn is a Machine Learning Library in Python
 
-# extracting only the relevant columns required for this point onwards
-data_stats = df[['APINO', '60_day_cum_oil', '180_day_cum_oil', '365_day_cum_oil']].astype(float)
-# fitting the linear regression model
+# Scatter Plot
+X1 = df['60_day_cum_oil']
+X2 = df['180_day_cum_oil']
+Y = df['365_day_cum_oil']
+plt.scatter(X1, Y)
 
-X = df[]
-
-plt()
-
-# Model for 30-365 comparison  - Method 1 (Using Statsmodels)
-X = data_stats['60_day_cum_oil']
-Y = data_stats['365_day_cum_oil']
-model1 = smf.ols(formula = 'Y ~ X', data=data_stats).fit()
-print (model1.params)
+# Basic Statistical Analysis Using Statsmodels
+model1 = smf.ols(formula = 'Y ~ X1', data=df).fit()
 print (model1.summary())
 
-# Model for 60-365 comparison - Method 2 (ScikitLearn Methods)
-X1 = data_stats[['180_day_cum_oil']]
-Y1 = data_stats[['365_day_cum_oil']]
-model2 = smf.ols(formula = 'Y ~ X', data=data_stats).fit()
+# Method 2 (ScikitLearn Methods)
+model2 = smf.ols(formula = 'Y ~ X2', data=df).fit()
 print (model2.params)
+# print (model2.summary)
 
-
-from scipy.stats import norm
 from scipy import stats
+from scipy.stats import norm
 # Histograms and Density plots for all the columns calculated 
 # Checking for the following statistical parameters
 # 1. Normality - checking for the normal distribution
@@ -197,33 +191,41 @@ from scipy import stats
 # 3. Linearity - Good idea to check in case any data transformation is required
 # 4. Absence of correlated errors
 
-sns.distplot(data_stats['60_day_cum_oil'], hist=True, kde=True, bins=300, color = 'blue', hist_kws={'edgecolor':'black'},kde_kws={'linewidth': 4})
-# Histogram (for kurtosis and skewness) and Normal Probability Plot (data distribution should follow the diagonal)
-# Getting the value of Kurtosis and Skewness
-print("Skewness: %f" % data_stats['365_day_cum_oil'].skew())
-print("Kurtosis: %f" % data_stats['365_day_cum_oil'].kurt())
+sns.set()
+sns.distplot(df['60_day_cum_oil'], hist=True, kde=True, bins=50, color = 'blue', hist_kws={'edgecolor':'black'},kde_kws={'linewidth': 4})
+sns.distplot(df['180_day_cum_oil'], hist=True, kde=True, bins=50, color = 'red', hist_kws={'edgecolor':'black'},kde_kws={'linewidth': 4})
+sns.distplot(df['365_day_cum_oil'], hist=True, kde=True, bins=50, color = 'green', hist_kws={'edgecolor':'black'},kde_kws={'linewidth': 4})
+sns.plt.legend()
 
+#skewness and kurtosis
+print("Skewness: %f" % df['365_day_cum_oil'].skew())
+print("Kurtosis: %f" % df['365_day_cum_oil'].kurt())
+
+sns.distplot(df['365_day_cum_oil'], fit = norm)
 fig = plt.figure()
-res = stats.probplot(data_stats['365_day_cum_oil'], plot=plt)
+res = stats.probplot(df['365_day_cum_oil'], plot=plt)
 # Adding the labels
 plt.title('Density Plot and Histogram of Annual Production')
-plt.xlabel('Time')
-plt.ylabel('Annual Production Frequency')
+
+# applying log transformation, in case of positive skewness, log transformations usually works well
+df['365_day_cum_oil_tr'] = np.log(df['365_day_cum_oil'])
+
+sns.distplot(df['365_day_cum_oil_tr'], fit = norm)
+fig = plt.figure()
+res = stats.probplot(df['365_day_cum_oil_tr'], plot=plt)
 
 # Pairtplot - Useful for exploring correlations between multidimensional data
-# sns.pairplot(data_stats, size=3);
+sns.pairplot(df, size=3)
 
 # Correlation Matrix and Heatmap
-corr_matrix = data_stats.corr()
+corr_matrix = df.corr()
 f, ax = plt.subplots(figsize = (6, 6))
 cm = sns.light_palette("green", as_cmap=True)
 s = sns.heatmap(corr_matrix, vmax=0.8, square=True, annot=True, fmt=".2f", cmap = cm)
 
 # Jointplot - Useful for joint distribution between different datasets
-#sns.jointplot("30_day_cum_oil", "365_day_cum_oil", data=data_stats, kind='reg');
-sns.jointplot("60_day_cum_oil", "365_day_cum_oil", data=data_stats, kind='reg');
-#sns.jointplot("90_day_cum_oil", "365_day_cum_oil", data_stats, kind='reg');
-sns.jointplot("180_day_cum_oil", "365_day_cum_oil", data=data_stats, kind='reg');
+sns.jointplot(X1, Y, data=df, kind='reg');
+sns.jointplot(X2, Y, data=df, kind='reg');
 
 # Convert the three dataframes we created to .csv file for tableau
 data.to_csv(os.path.join(path,r'Data_Final.csv'))
