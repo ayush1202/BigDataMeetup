@@ -4,37 +4,41 @@ Created on Mon Jun 11 15:45:51 2018
 
 @author: AyushRastogi
 """
-import sqlite3                    
+import sqlite3 # database library - included with python3                   
 import pandas as pd # data processing and csv file IO library
 import numpy as np       
 import matplotlib.pyplot as plt
 import seaborn as sns # python graphing library
 plt.style.use('seaborn')
 sns.set(style="white", color_codes=True)
-plt.rc('figure', figsize=(10, 6))
+plt.rc('figure', figsize=(10, 6)) #plot customization 
 np.set_printoptions(precision=4, suppress=True)
-# plt.rcdefaults() # resest to default matplotlib parameters 
+# plt.rcdefaults() # reset to default matplotlib parameters 
 import warnings #ignore unwanted messages
 warnings.filterwarnings("ignore")
 import os
 
 os.path
 os.getcwd() # Get the default working directory
-path = r'C:\Users\ayush\Desktop\Meetup2_All Files'
+# path = r'C:\Users\ayush\Desktop\Meetup2_All Files' #Laptop
+path = r'C:\Users\AyushRastogi\OneDrive\Meetup2\Meetup2_BigData' #Computer
 os.chdir(path)
 
 # Setting up the connections
-conn = sqlite3.connect(r'C:\Users\ayush\Desktop\Meetup2_All Files\WY_Production.sqlite')
+# conn = sqlite3.connect(r'C:\Users\ayush\Desktop\Meetup2_All Files\WY_Production.sqlite') # 4,990,092 rows
+conn = sqlite3.connect(path+r'\WY_Production.sqlite') # 4,990,092 rows
 cur = conn.cursor()
 
 #  Merge the data with the fracfocus database
-conn2 = sqlite3.connect(r'C:\Users\ayush\Desktop\Meetup2_All Files\FracFocus.sqlite')
+#conn2 = sqlite3.connect(r'C:\Users\ayush\Desktop\Meetup2_All Files\FracFocus.sqlite') # 3,239,346 rows 
+conn2 = sqlite3.connect(path+r'\FracFocus.sqlite') # 3,239,346 rows 
 cur2 = conn2.cursor()
 # Connections to the two databases complete
 
-# SQL Query - Data from database converted to a dataframe
-data = pd.read_sql_query(''' SELECT * FROM Production;''', conn) # Campbell County wells
-data2 = pd.read_csv(r'C:\Users\ayush\Desktop\Meetup2_All Files\Converse.csv') #Converse County wells
+# SQL Query 1 - Data from database converted to a dataframe
+data = pd.read_sql_query(''' SELECT * FROM Production;''', conn) # Campbell County wells from Production Table in SQL Database
+# data2 = pd.read_csv(r'C:\Users\ayush\Desktop\Meetup2_All Files\Converse.csv') #Converse County wells
+data2 = pd.read_csv(r'C:\Users\AyushRastogi\OneDrive\Meetup2\Meetup2_BigData\Converse.csv') #Converse County wells
 
 # Append the production files
 data_prod = data.append(data2)
@@ -46,7 +50,7 @@ data_prod.describe() # get basic statistics for the dataset, does not include an
 # Number of unique API 
 data_prod.APINO.nunique() # This gives us 29,737 well records
 
-# SL Query 2 - Import the data from FracFocus Database while selecting Campbell and Converse counties in Wyoming 
+# SQL Query 2 - Import the data from FracFocus Database while selecting Campbell and Converse counties in Wyoming 
 data_FF1 = pd.read_sql_query(''' SELECT APINumber AS APINO, TotalBaseWaterVolume, CountyName, CountyNumber  
                             FROM FracFocusRegistry 
                             WHERE (Statenumber = 49 AND (CountyNumber = 5 OR CountyNumber = 9));''', conn2)
@@ -73,17 +77,11 @@ data_prod['StateCode'] = '4900'
 data_prod['Trail_zero'] = '0000'
 data_prod['APINO'] = data_prod['StateCode'] + data_prod['APINO'].astype(str) + data_prod['Trail_zero']
 data_prod['APINO']
-data_prod.APINO.nunique() # This gives us 29,737 well records
+data_prod.APINO.nunique() # This gives us 29,737 well records, so we didnt lose any well 
 
 # -------------Merging Dataframes (Merge the dataframes based on same API)
 data_merged = pd.merge(data_prod,data_FF, on = 'APINO') # Default merge is on 'inner'
 data_merged.APINO.nunique() # At this point we have 685 wells
-
-## ------Date Manipulation - Convert the date column from string to datetime format
-#data = data.drop(data[data.Days == 99].index) #multiple rows where days = 99 (incorrect default value)
-#data.isnull().sum()  # Checking if there is any NULL value in the dataset
-#data = data.dropna(axis=0, how='any') # entire row with even a single NA value will be removed - Better option to filter data
-
 
 # Column for Cumulative value, Groupby function can be understood as (Split, Apply Function and Combine)
 # Also converting the numbers to float 
@@ -96,19 +94,25 @@ data_merged['cum_days'] = data_merged.groupby(['APINO'])['Days'].apply(lambda x:
 
 # Sorting the table by APINO
 data_merged = data_merged.sort_values(['APINO'])
-
-# Let's just look into the oil for now!
-data_merged.columns # the list of columns in the dataframe
 df = data_merged[['APINO', 'cum_oil', 'cum_gas', 'cum_water', 'cum_days']].astype(float) # New Dataframe with selected columns 
 df = df[(df[['cum_oil','cum_gas','cum_days']] != 0).all(axis=1)]
-df
+df.columns
 
 df = df.reset_index()
-df.index
 df = df.sort_values(['index'])
 df.to_csv(os.path.join(path,r'Cumulative_Production_0619.csv')) # Converting the file to csv
 df.APINO.nunique() # We have 682 wells left 
 
+# Date Manipulation - Convert the date column from string to datetime format
+# data['Date'] = pd.to_datetime(data['Date'], infer_datetime_format=True, errors='ignore')
+# data['Date'] = pd.to_datetime(data['Date'], errors='ignore')
+# filtering the date for production after 2005
+# data = data[(data['Date'] > '2005-01-01')] 
+
+# data_merged = data_merged.drop(data_merged[data_merged.Days == 99].index)
+# multiple rows where days = 99 (incorrect default value)
+# data_merged.isnull().sum()  # Checking if there is any NULL value in the dataset
+# data_merged = data_merged.dropna(axis=0, how='any') # entire row with even a single NA value will be removed - Better option to filter data
 
 # -------------------------INTERPOLATION-------------------------------
 # **Interpolation carried out on another script**
@@ -121,7 +125,9 @@ df
 df.rename(columns={'60_Interpol_OIL': '60_day_cum_oil', '90_Interpol_OIL': '90_day_cum_oil', '180_Interpol_OIL': '180_day_cum_oil', '365_Interpol_OIL': '365_day_cum_oil', '730_Interpol_OIL': '730_day_cum_oil' }, inplace=True)
 df.columns
 
-# import statsmodels and run basic analysis on 60,180 and 365 data
+df = df[(df[['180_day_cum_oil','365_day_cum_oil','730_day_cum_oil', ]] != 0).all(axis=1)]
+
+# import statsmodels and run basic analysis on 180, 365 and 730 days
 
 # Descriptive Statistics
 df.describe()
@@ -131,18 +137,18 @@ import statsmodels.formula.api as smf
 
 # Scatter Plot
 
-X1 = df['60_day_cum_oil']
-X2 = df['180_day_cum_oil']
-Y = df['365_day_cum_oil']
+X1 = df['180_day_cum_oil']
+X2 = df['365_day_cum_oil']
+Y = df['730_day_cum_oil']
 plt.subplot(211)
 plt.scatter(X1, Y, marker='o', cmap='Dark2', color='r')
 plt.title('Scatter Plot')
-plt.xlabel("60 Day Production")
-plt.ylabel ("365 Day Production")
+plt.xlabel("180 Day Production")
+plt.ylabel ("730 Day Production")
 plt.subplot(212)
 plt.scatter(X2, Y, marker='.', cmap='Dark2',color='g')
-plt.xlabel("180 Day Production")
-plt.ylabel ("365 Day Production")
+plt.xlabel("365 Day Production")
+plt.ylabel ("730 Day Production")
 
 # Basic Statistical Analysis Using Statsmodels
 model1 = smf.ols(formula = 'Y ~ X1', data=df).fit()
@@ -165,29 +171,32 @@ from scipy.stats import norm
 # Distplot - Visualizing the distribution of a dataset
 # Histogram with KDE (Kernel Density Estimation is a non-parametric way to estimate the probability density function of a random variable)
 sns.set()
-sns.distplot(df['60_day_cum_oil'], axlabel=False, hist=True, kde=True, bins=50, color = 'blue',label ='60 Day Cumulative', hist_kws={'edgecolor':'black'},kde_kws={'linewidth': 4})
-sns.distplot(df['180_day_cum_oil'], axlabel=False, hist=True, kde=True, bins=50, color = 'red',label ='180 Day Cumulative', hist_kws={'edgecolor':'black'},kde_kws={'linewidth': 4})
-sns.distplot(df['365_day_cum_oil'], axlabel=False, hist=True, kde=True, bins=50, color = 'green',label ='365 Day Cumulative', hist_kws={'edgecolor':'black'},kde_kws={'linewidth': 4}).set_title('Distribution Comparison')
+sns.distplot(df['180_day_cum_oil'], axlabel=False, hist=True, kde=True, bins=50, color = 'blue',label ='180 Day Cumulative', hist_kws={'edgecolor':'black'},kde_kws={'linewidth': 4})
+sns.distplot(df['365_day_cum_oil'], axlabel=False, hist=True, kde=True, bins=50, color = 'red',label ='365 Day Cumulative', hist_kws={'edgecolor':'black'},kde_kws={'linewidth': 4})
+sns.distplot(df['730_day_cum_oil'], axlabel=False, hist=True, kde=True, bins=50, color = 'green',label ='730 Day Cumulative', hist_kws={'edgecolor':'black'},kde_kws={'linewidth': 4}).set_title('Distribution Comparison')
 plt.legend()
 plt.show()
 
 #skewness and kurtosis
-print("Skewness: %f" % df['365_day_cum_oil'].skew())
-print("Kurtosis: %f" % df['365_day_cum_oil'].kurt())
+print("Skewness: %f" % df['730_day_cum_oil'].skew())
+print("Kurtosis: %f" % df['730_day_cum_oil'].kurt())
 
 
 #Probability Plot - Quantiles - To get an idea about normality and see where the samples deviate from normality
-sns.distplot(df['365_day_cum_oil'], fit = norm)
+sns.distplot(df['730_day_cum_oil'], fit = norm)
 fig = plt.figure()
-res = stats.probplot(df['365_day_cum_oil'], plot=plt)
+res = stats.probplot(df['730_day_cum_oil'], plot=plt)
 # Adding the labels
 
 # applying log transformation, in case of positive skewness, log transformations usually works well
-#df['365_day_cum_oil_trans'] = np.log(df['365_day_cum_oil'])
+df['730_day_cum_oil_trans'] = np.log(df['730_day_cum_oil'])
+sns.distplot(df['730_day_cum_oil_trans'], fit = norm)
+fig = plt.figure()
+res = stats.probplot(df['730_day_cum_oil_trans'], plot=plt)
 
 # Pairtplot - Useful for exploring correlations between multidimensional data
 sns.set(style="ticks", color_codes=True)
-sns.pairplot(df, size=3, palette="husl", vars=["60_day_cum_oil", "180_day_cum_oil", "365_day_cum_oil"], kind="reg", markers=".")
+sns.pairplot(df, size=3, palette="husl", vars=["180_day_cum_oil", "365_day_cum_oil", "730_day_cum_oil"], kind="reg", markers=".")
 
 # Correlation Matrix and Heatmap
 df2 = df[["60_day_cum_oil", "90_day_cum_oil", "180_day_cum_oil","365_day_cum_oil","730_day_cum_oil"]]
