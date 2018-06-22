@@ -4,6 +4,9 @@ Created on Mon Jun 11 15:45:51 2018
 
 @author: AyushRastogi
 """
+
+# This file is no longer useful since the command is merged into the main file 
+
 import sqlite3                    
 import pandas as pd # data processing and csv file IO library
 import numpy as np       
